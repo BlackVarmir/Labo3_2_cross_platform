@@ -43,7 +43,7 @@ fun PostTextPage(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     // Fire the POST once when the screen first appears.
-    LaunchedEffect(Unit) { viewModel.send() }
+    LaunchedEffect(Unit) { viewModel.onIntent(PostTextIntent.Send) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Toolbar(onUpButtonClick = onUpButtonClick)
@@ -61,7 +61,7 @@ fun PostTextPage(
             )
 
             Button(
-                onClick = viewModel::send,
+                onClick = { viewModel.onIntent(PostTextIntent.Send) },
                 enabled = !state.isLoading,
                 modifier = Modifier.fillMaxWidth(),
             ) {
