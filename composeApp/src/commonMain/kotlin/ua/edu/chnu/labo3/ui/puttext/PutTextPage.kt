@@ -43,7 +43,7 @@ fun PutTextPage(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     // Fire the PUT once when the screen first appears.
-    LaunchedEffect(Unit) { viewModel.send() }
+    LaunchedEffect(Unit) { viewModel.onIntent(PutTextIntent.Send) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Toolbar(onUpButtonClick = onUpButtonClick)
@@ -61,7 +61,7 @@ fun PutTextPage(
             )
 
             Button(
-                onClick = viewModel::send,
+                onClick = { viewModel.onIntent(PutTextIntent.Send) },
                 enabled = !state.isLoading,
                 modifier = Modifier.fillMaxWidth(),
             ) {
