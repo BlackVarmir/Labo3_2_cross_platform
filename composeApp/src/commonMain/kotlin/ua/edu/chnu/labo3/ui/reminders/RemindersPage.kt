@@ -40,15 +40,17 @@ fun RemindersPage(
     onUpButtonClick: () -> Unit,
     viewModel: RemindersViewModel = koinViewModel(),
 ) {
-    val reminders by viewModel.reminders.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     Column {
         Toolbar(onUpButtonClick = onUpButtonClick)
-        AddReminderBar(onAdd = viewModel::add)
+        AddReminderBar(
+            onAdd = { title, note -> viewModel.onIntent(RemindersIntent.Add(title, note)) },
+        )
         ReminderList(
-            reminders = reminders,
-            onToggleDone = viewModel::toggleDone,
-            onDelete = viewModel::delete,
+            reminders = state.reminders,
+            onToggleDone = { viewModel.onIntent(RemindersIntent.ToggleDone(it)) },
+            onDelete = { viewModel.onIntent(RemindersIntent.Delete(it)) },
         )
     }
 }

@@ -1,52 +1,52 @@
 package ua.edu.chnu.labo3.ui.reminders
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import ua.edu.chnu.labo3.data.Reminder
-import ua.edu.chnu.labo3.data.ReminderRepository
+import ua.edu.chnu.labo3.domain.usecase.AddReminderUseCase
+import ua.edu.chnu.labo3.domain.usecase.DeleteReminderUseCase
+import ua.edu.chnu.labo3.domain.usecase.ObserveRemindersUseCase
+import ua.edu.chnu.labo3.domain.usecase.ToggleReminderDoneUseCase
+import ua.edu.chnu.labo3.ui.mvi.MviViewModel
+import ua.edu.chnu.labo3.ui.mvi.UiIntent
+import ua.edu.chnu.labo3.ui.mvi.UiState
+
+/** MVI Model of the Reminders screen. */
+data class RemindersUiState(
+    val reminders: List<Reminder> = emptyList(),
+) : UiState
+
+sealed interface RemindersIntent : UiIntent {
+    data class Add(val title: String, val note: String) : RemindersIntent
+    data class ToggleDone(val reminder: Reminder) : RemindersIntent
+    data class Delete(val reminder: Reminder) : RemindersIntent
+}
 
 /**
- * ViewModel for the Reminders screen.
- *
- * Exposes the reminders list as a [StateFlow] collected from the repository, and
- * forwards user actions (add / toggle done / delete) to it. The repository is
- * injected by Koin, so the ViewModel is unaware of where the data is stored.
+ * The reminders list is a stream: the use case's [kotlinx.coroutines.flow.Flow]
+ * is folded into the single [RemindersUiState] for as long as the ViewModel
+ * lives. User actions arrive as [RemindersIntent]s and go to the use cases;
+ * the database emits the new list, which becomes the new state.
  */
 class RemindersViewModel(
-    private val repository: ReminderRepository,
-) : ViewModel() {
+    observeReminders: ObserveRemindersUseCase,
+    private val addReminder: AddReminderUseCase,
+    private val toggleReminderDone: ToggleReminderDoneUseCase,
+    private val deleteReminder: DeleteReminderUseCase,
+) : MviViewModel<RemindersUiState, RemindersIntent>(RemindersUiState()) {
 
-    /** The reactive reminders list, kept in sync with the database. */
-    val reminders: StateFlow<List<Reminder>> =
-        repository.observeAll().stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
-        )
-
-    /** Adds a reminder if the title is not blank. */
-    fun add(title: String, note: String) {
-        if (title.isBlank()) return
-        viewModelScope.launch {
-            repository.add(title.trim(), note.trim())
-        }
+    init {
+        observeReminders()
+            .onEach { list -> setState { copy(reminders = list) } }
+            .launchIn(viewModelScope)
     }
 
-    /** Flips the done state of the given reminder. */
-    fun toggleDone(reminder: Reminder) {
-        viewModelScope.launch {
-            repository.setDone(reminder.id, !reminder.isDone)
-        }
-    }
-
-    /** Deletes the given reminder. */
-    fun delete(reminder: Reminder) {
-        viewModelScope.launch {
-            repository.delete(reminder.id)
+    override fun handleIntent(intent: RemindersIntent) {
+        when (intent) {
+            is RemindersIntent.Add -> addReminder(intent.title, intent.note)
+            is RemindersIntent.ToggleDone -> toggleReminderDone(intent.reminder)
+            is RemindersIntent.Delete -> deleteReminder(intent.reminder)
         }
     }
 }
