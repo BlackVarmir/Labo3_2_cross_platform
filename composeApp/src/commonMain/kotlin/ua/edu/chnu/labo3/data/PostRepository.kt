@@ -1,10 +1,20 @@
 package ua.edu.chnu.labo3.data
 
 /**
- * Wrapper over [ApiService] that isolates the ViewModel from the service.
+ * Raw HTTP answer split into the status line and the body.
+ * Produced in the data layer with [map], so upper layers never parse strings.
+ */
+data class RawResponse(
+    val status: String,
+    val body: String,
+)
+
+/**
+ * Wrapper over [ApiService] that isolates the domain/presentation layers from
+ * the service.
  *
- * Every method returns a [NetworkResult] instead of throwing, so the
- * presentation layer never deals with Ktor types or exceptions directly.
+ * Every method returns a [NetworkResult] instead of throwing, so nobody above
+ * this layer deals with Ktor types or exceptions directly.
  */
 interface PostRepository {
     suspend fun getPost(id: Int): NetworkResult<Post>
@@ -21,8 +31,8 @@ interface PostRepository {
     /** Lab 14: PUT (update) a post and return the raw response body as plain text. */
     suspend fun updatePostText(id: Int, title: String, body: String): NetworkResult<String>
 
-    /** Lab 15: DELETE a post and return the raw response (status + body) as plain text. */
-    suspend fun deletePostText(id: Int): NetworkResult<String>
+    /** Lab 15: DELETE a post and return the raw response (status + body). */
+    suspend fun deletePostText(id: Int): NetworkResult<RawResponse>
 }
 
 class PostRepositoryImpl(
@@ -50,6 +60,13 @@ class PostRepositoryImpl(
     override suspend fun updatePostText(id: Int, title: String, body: String): NetworkResult<String> =
         networkResultOf { apiService.updatePostRawText(id, title, body) }
 
-    override suspend fun deletePostText(id: Int): NetworkResult<String> =
+    // Lab 3: `map` turns the service's "HTTP <status>\n\n<body>" string into a typed value.
+    override suspend fun deletePostText(id: Int): NetworkResult<RawResponse> =
         networkResultOf { apiService.deletePostRawText(id) }
+            .map { raw ->
+                RawResponse(
+                    status = raw.lineSequence().first(),
+                    body = raw.substringAfter("\n\n", missingDelimiterValue = ""),
+                )
+            }
 }

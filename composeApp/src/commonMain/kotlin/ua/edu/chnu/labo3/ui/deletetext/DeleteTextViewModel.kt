@@ -67,10 +67,10 @@ class DeleteTextViewModel(
                         isDeleted = true,
                         resultText = buildString {
                             appendLine("Request:  DELETE /posts/$POST_ID")
-                            appendLine("Response: ${result.data.lineSequence().first()}")
+                            appendLine("Response: ${result.data.status}")
                             appendLine()
                             appendLine("Response body:")
-                            append(result.data.substringAfter("\n\n"))
+                            append(result.data.body)
                         },
                     )
                 }
