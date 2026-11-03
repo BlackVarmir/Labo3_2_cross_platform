@@ -1,56 +1,77 @@
 # labo3_cross_platform
 
-Kotlin Multiplatform (Compose Multiplatform) project for **Лабораторна робота №15**.
-Continuation of Lab 14 - adds a **DELETE request whose result is shown on screen as plain text**,
-on top of the **Ktor** + **Koin** networking layer introduced in Lab 11.
+Kotlin Multiplatform (Compose Multiplatform) project for **Лабораторна робота №3**
+(семестр 2, built on top of labs 10-15 of the previous semester).
 
 Targets: **Android**, **Desktop (JVM)**, **iOS** (iOS builds require macOS + Xcode).
-
 Test API: [jsonplaceholder.typicode.com](https://jsonplaceholder.typicode.com/).
 
-## What Lab 15 adds
+## What Lab 3 changes
 
-1. **Raw DELETE call** - `ApiService.deletePostRawText(id)` performs `DELETE /posts/{id}` and
-   returns the HTTP status line plus the response body verbatim via Ktor's `bodyAsText()`,
-   without deserializing it (jsonplaceholder answers with `200 OK` and an empty `{}` body).
-2. **Repository method** - `PostRepository.deletePostText(id)` wraps that call in a
-   `NetworkResult` so success and failure are handled uniformly.
-3. **"DELETE as text" screen** (`ui/deletetext/`) - `DeleteTextPage` + `DeleteTextViewModel`.
-   Step 1: on open, the screen loads post id = 1 with GET and shows what will be deleted.
-   Step 2: nothing is deleted automatically - the DELETE is sent only when the user presses
-   **"Delete post #1"**. A progress indicator is shown while the call is in flight; then the
-   post is marked as deleted, a confirmation is shown, and the raw server response (request,
-   HTTP status and body) is rendered on screen as plain text (or an error message on failure).
-   **"Start over"** reloads the post. Note: jsonplaceholder is a fake API - it answers
-   `200 OK` but does not really delete anything, so the post comes back after a reload.
-4. **Navigation** - new `Screen.DeleteText` route, a Home-screen button, and the matching
-   `composable` entry in `AppNavHost`; `DeleteTextViewModel` is registered in the Koin `appModule`.
+### 1. Presentation layer: MVVM -> MVI
 
-## Carried over from earlier labs
+`ui/mvi/Mvi.kt` holds the base class `MviViewModel<S : UiState, I : UiIntent>`:
 
-- The Lab 14 **"PUT as text"** screen (`ui/puttext/`), Lab 13 **"POST as text"** screen
-  (`ui/posttext/`) and Lab 12 **"GET as text"** screen (`ui/gettext/`), Ktor client +
-  kotlinx.serialization networking layer and `NetworkResult` (Lab 11), the GET/POST/PUT/DELETE
-  test screen (`ui/network/`), custom theme (`ui/theme/`, `labo3Theme`), Koin DI,
-  Multiplatform Settings (About-screen visit stats), SQLDelight reminders, Kermit logging, and
-  `expect class Platform` for system info.
+- **Model** - one immutable `UiState` per screen, exposed as `state: StateFlow<S>`;
+- **Intent** - a `sealed interface` of everything the user can do; the *only* way into the
+  ViewModel is `onIntent(intent)`;
+- **View** - the Composable renders `state` and sends intents (`viewModel.onIntent(...)`),
+  it never calls ViewModel methods or touches repositories.
+
+State changes only through the reducer `setState { copy(...) }`, so data flows one way:
+`View -> Intent -> ViewModel -> new State -> View`.
+
+Every screen now has its own state + intent + ViewModel: `AboutViewModel` (`AboutIntent.Load`),
+`RemindersViewModel` (`Add`, `ToggleDone`, `Delete`), `NetworkViewModel` (`Get`, `Post`, `Put`,
+`Delete`), `GetTextViewModel` (`Load`), `PostTextViewModel` / `PutTextViewModel` (`Send`),
+`DeleteTextViewModel` (`LoadPost`, `Delete`).
+
+### 2. Domain layer: use cases
+
+`domain/usecase/` - one class per application action, each with a single `operator fun invoke`:
+
+- posts: `GetPostUseCase`, `CreatePostUseCase`, `UpdatePostUseCase`, `DeletePostUseCase`,
+  `GetPostsTextUseCase`, `CreatePostTextUseCase`, `UpdatePostTextUseCase`, `DeletePostTextUseCase`;
+- reminders: `ObserveRemindersUseCase`, `AddReminderUseCase` (the "blank title is rejected,
+  input is trimmed" rule now lives here), `ToggleReminderDoneUseCase`, `DeleteReminderUseCase`;
+- about: `GetSystemInfoUseCase`, `RegisterAboutVisitUseCase`.
+
+ViewModels depend **only on use cases**, never on repositories. Use cases are registered with
+`factoryOf(...)` in the Koin `appModule`.
+
+### 3. Data layer: `map` extension for `NetworkResult`
+
+`data/NetworkResult.kt` gets a public `inline fun <T, R> NetworkResult<T>.map(transform)`
+(plus `fold`). `Success` is transformed, `Error` passes through untouched, and an exception
+thrown by `transform` becomes `Error`. It is used in the data layer:
+`PostRepositoryImpl.deletePostText` turns the service's raw `"HTTP <status>\n\n<body>"` string
+into a typed `RawResponse(status, body)`, so no upper layer parses strings anymore.
+`NetworkViewModel` also uses it (`deletePost(id).map { "Post #$id deleted." }`).
+Unit tests: `commonTest/.../NetworkResultMapTest.kt`.
+
+## Layers
+
+```
+ui (Compose Page + MviViewModel)  ->  domain (use cases)  ->  data (repositories, ApiService, DB)
+          Intent / State                   invoke()              NetworkResult + map
+```
 
 ## Run
 
 Android:
 
 ```
-.\gradlew.bat :composeApp:assembleDebug
+./gradlew :composeApp:assembleDebug
 ```
 
 Desktop (JVM):
 
 ```
-.\gradlew.bat :composeApp:run
+./gradlew :composeApp:run
 ```
 
-iOS: open the project on macOS and run the `iosApp` target.
+Tests:
 
-> Note: this project was set up on Windows. Android and Desktop targets build on Windows;
-> the iOS target requires macOS. Android requires the `INTERNET` permission (already declared
-> in the manifest).
+```
+./gradlew :composeApp:jvmTest
+```
