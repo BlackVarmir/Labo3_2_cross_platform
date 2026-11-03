@@ -51,7 +51,7 @@ fun DeleteTextPage(
     viewModel: DeleteTextViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val id = DeleteTextViewModel.POST_ID
+    val id = DELETE_POST_ID
 
     Column(modifier = Modifier.fillMaxSize()) {
         Toolbar(onUpButtonClick = onUpButtonClick)
@@ -74,7 +74,7 @@ fun DeleteTextPage(
             Hint("DELETE https://jsonplaceholder.typicode.com/posts/$id")
 
             Button(
-                onClick = viewModel::delete,
+                onClick = { viewModel.onIntent(DeleteTextIntent.Delete) },
                 enabled = state.post != null && !state.isDeleting && !state.isDeleted,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
@@ -109,7 +109,7 @@ fun DeleteTextPage(
             }
 
             OutlinedButton(
-                onClick = viewModel::loadPost,
+                onClick = { viewModel.onIntent(DeleteTextIntent.LoadPost) },
                 enabled = !state.isLoadingPost && !state.isDeleting,
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
             ) {
