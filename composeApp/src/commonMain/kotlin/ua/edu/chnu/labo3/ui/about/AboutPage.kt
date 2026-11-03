@@ -21,11 +21,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -33,9 +35,11 @@ fun AboutPage(
     onUpButtonClick: () -> Unit,
     viewModel: AboutViewModel = koinViewModel(),
 ) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
     Column {
         Toolbar(onUpButtonClick = onUpButtonClick)
-        ContentView(items = viewModel.items, visit = viewModel.visit)
+        ContentView(items = state.items, visit = state.visit)
     }
 }
 
