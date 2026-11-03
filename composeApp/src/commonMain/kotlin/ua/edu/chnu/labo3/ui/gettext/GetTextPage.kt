@@ -43,7 +43,7 @@ fun GetTextPage(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     // Fire the GET once when the screen first appears.
-    LaunchedEffect(Unit) { viewModel.load() }
+    LaunchedEffect(Unit) { viewModel.onIntent(GetTextIntent.Load) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Toolbar(onUpButtonClick = onUpButtonClick)
@@ -61,7 +61,7 @@ fun GetTextPage(
             )
 
             Button(
-                onClick = viewModel::load,
+                onClick = { viewModel.onIntent(GetTextIntent.Load) },
                 enabled = !state.isLoading,
                 modifier = Modifier.fillMaxWidth(),
             ) {

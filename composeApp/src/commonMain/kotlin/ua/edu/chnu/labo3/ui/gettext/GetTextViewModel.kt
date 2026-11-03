@@ -1,43 +1,41 @@
 package ua.edu.chnu.labo3.ui.gettext
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ua.edu.chnu.labo3.data.NetworkResult
-import ua.edu.chnu.labo3.data.PostRepository
+import ua.edu.chnu.labo3.domain.usecase.GetPostsTextUseCase
+import ua.edu.chnu.labo3.ui.mvi.MviViewModel
+import ua.edu.chnu.labo3.ui.mvi.UiIntent
+import ua.edu.chnu.labo3.ui.mvi.UiState
 
-/** UI state for the Lab 12 "GET as plain text" screen. */
+/** MVI Model of the Lab 12 "GET as plain text" screen. */
 data class GetTextUiState(
     val isLoading: Boolean = false,
     val text: String = "",
     val errorText: String = "",
-)
+) : UiState
 
-/**
- * Lab 12 ViewModel: runs a single GET request and exposes the response body as
- * plain text. It reuses [PostRepository], which wraps every call in a
- * [NetworkResult] so success and failure are handled uniformly.
- */
+/** Everything the user can do on the screen. */
+sealed interface GetTextIntent : UiIntent {
+    /** Perform GET /posts. */
+    data object Load : GetTextIntent
+}
+
+/** MVI ViewModel: Intent -> use case -> new [GetTextUiState]. */
 class GetTextViewModel(
-    private val repository: PostRepository,
-) : ViewModel() {
+    private val getPostsText: GetPostsTextUseCase,
+) : MviViewModel<GetTextUiState, GetTextIntent>(GetTextUiState()) {
 
-    private val _state = MutableStateFlow(GetTextUiState())
-    val state: StateFlow<GetTextUiState> = _state.asStateFlow()
+    override fun handleIntent(intent: GetTextIntent) = when (intent) {
+        GetTextIntent.Load -> load()
+    }
 
-    /** Performs GET /posts and stores the raw response text in the UI state. */
-    fun load() {
+    private fun load() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, text = "", errorText = "") }
-            when (val result = repository.getPostsText()) {
-                is NetworkResult.Success ->
-                    _state.update { it.copy(isLoading = false, text = result.data) }
-                is NetworkResult.Error ->
-                    _state.update { it.copy(isLoading = false, errorText = result.message) }
+            setState { copy(isLoading = true, text = "", errorText = "") }
+            when (val result = getPostsText()) {
+                is NetworkResult.Success -> setState { copy(isLoading = false, text = result.data) }
+                is NetworkResult.Error -> setState { copy(isLoading = false, errorText = result.message) }
             }
         }
     }
