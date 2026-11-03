@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ua.edu.chnu.labo3.data.NetworkResult
+import ua.edu.chnu.labo3.data.map
 import ua.edu.chnu.labo3.data.PostRepository
 
 /** UI state for the networking test screen. */
@@ -64,10 +65,3 @@ class NetworkViewModel(
         }
     }
 }
-
-/** Maps the success payload of a [NetworkResult] while preserving errors. */
-private fun <T, R> NetworkResult<T>.map(transform: (T) -> R): NetworkResult<R> =
-    when (this) {
-        is NetworkResult.Success -> NetworkResult.Success(transform(data))
-        is NetworkResult.Error -> this
-    }
