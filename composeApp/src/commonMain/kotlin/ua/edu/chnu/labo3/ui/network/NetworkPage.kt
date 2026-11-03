@@ -54,10 +54,10 @@ fun NetworkPage(
 
             VerbButtons(
                 enabled = !state.isLoading,
-                onGet = viewModel::get,
-                onPost = viewModel::post,
-                onPut = viewModel::put,
-                onDelete = viewModel::delete,
+                onGet = { viewModel.onIntent(NetworkIntent.Get) },
+                onPost = { viewModel.onIntent(NetworkIntent.Post) },
+                onPut = { viewModel.onIntent(NetworkIntent.Put) },
+                onDelete = { viewModel.onIntent(NetworkIntent.Delete) },
             )
 
             ProgressArea(isLoading = state.isLoading)
